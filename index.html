@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>タスクリスト</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Yu Gothic UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      color: #20283a;
+      background: #f5f7fb;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      --accent: #5368df;
+      --border: #e4e8f0;
+      --muted: #68738a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      margin: 0;
+      padding: 48px 20px;
+    }
+
+    main {
+      width: min(100%, 680px);
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--accent);
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 5vw, 2.4rem);
+      letter-spacing: -.04em;
+    }
+
+    .intro {
+      margin: 10px 0 28px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .panel {
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 12px 36px rgb(34 48 82 / 6%);
+    }
+
+    form { display: flex; gap: 10px; }
+
+    #todo-form {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 12px;
+    }
+
+    #todo-form .field {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: .88rem;
+      font-weight: 600;
+    }
+
+    #todo-form input { width: 100%; }
+    #todo-form .deadline-field { grid-column: 1; }
+    #todo-form .primary { grid-column: 2; grid-row: 1 / 3; }
+
+    input {
+      min-width: 0;
+      flex: 1;
+      padding: 12px 14px;
+      border: 1px solid #d5dbea;
+      border-radius: 9px;
+      color: inherit;
+      font: inherit;
+    }
+
+    input:focus-visible, button:focus-visible {
+      outline: 3px solid rgb(83 104 223 / 28%);
+      outline-offset: 2px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 9px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:disabled, input:disabled { cursor: not-allowed; opacity: .55; }
+
+    .primary {
+      padding: 12px 18px;
+      background: var(--accent);
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .list-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 28px 2px 12px;
+    }
+
+    h2 { margin: 0; font-size: 1rem; }
+    .count { color: var(--muted); font-size: .88rem; }
+
+    .list-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 16px;
+      margin-bottom: 14px;
+    }
+
+    .list-controls label {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+
+    .list-controls select {
+      max-width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #d5dbea;
+      border-radius: 8px;
+      background: #fff;
+      color: inherit;
+      font: inherit;
+    }
+
+    .deadline-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin: 12px 2px 0;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+
+    .legend-swatch {
+      width: 12px;
+      height: 12px;
+      border: 1px solid;
+      border-radius: 3px;
+    }
+
+    .legend-swatch.has-deadline { border-color: #cbd7fb; background: #f2f6ff; }
+    .legend-swatch.due-today { border-color: #e6bd39; background: #fff7d6; }
+    .legend-swatch.overdue { border-color: #e58b86; background: #fff0ef; }
+
+    ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+
+    .todo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 62px;
+      padding: 10px 12px 10px 16px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+    }
+
+    .todo.has-deadline {
+      border-color: #cbd7fb;
+      background: #f2f6ff;
+    }
+
+    .todo.due-today {
+      border-color: #e6bd39;
+      background: #fff7d6;
+    }
+
+    .todo.overdue {
+      border-color: #e58b86;
+      background: #fff0ef;
+    }
+
+    .todo.completed {
+      border-color: var(--border);
+      background: #f4f6f9;
+    }
+
+    .todo-text {
+      min-width: 0;
+      flex: 1;
+      overflow-wrap: anywhere;
+      line-height: 1.5;
+    }
+
+    .todo.completed .todo-text {
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+
+    .completion-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--muted);
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+
+    .completion-control input { margin: 0; accent-color: var(--accent); }
+
+    .actions { display: flex; gap: 6px; }
+    .edit-form { display: flex; flex: 1; flex-wrap: wrap; gap: 8px; }
+    .edit-form input { padding: 8px 10px; }
+    .edit-form input[type="text"] { flex: 1 1 180px; }
+    .edit-form input[type="datetime-local"] { flex: 0 1 220px; }
+    .deadline-text {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .secondary, .danger {
+      padding: 8px 10px;
+      background: #f1f3f8;
+      color: #3c465d;
+      font-size: .86rem;
+    }
+
+    .danger { background: #fff0ef; color: #b13d37; }
+    .empty { padding: 26px 12px; color: var(--muted); text-align: center; }
+
+    dialog {
+      width: min(calc(100% - 32px), 390px);
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      color: inherit;
+      box-shadow: 0 20px 60px rgb(34 48 82 / 22%);
+    }
+
+    dialog::backdrop { background: rgb(24 32 52 / 42%); }
+    dialog p { margin: 0 0 22px; line-height: 1.7; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+    .message {
+      min-height: 1.5em;
+      margin: 12px 2px 0;
+      color: #a5342e;
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+
+    .undo-notice {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 9px;
+      background: #eef1fa;
+      color: #3c465d;
+      font-size: .9rem;
+    }
+
+    .undo-notice[hidden] { display: none; }
+
+    @media (max-width: 480px) {
+      body { padding: 32px 14px; }
+      .panel { padding: 18px 14px; }
+      .todo { align-items: flex-start; flex-wrap: wrap; padding-left: 12px; }
+      .actions { flex-shrink: 0; }
+      .secondary, .danger { padding: 8px; }
+      #todo-form { grid-template-columns: minmax(0, 1fr) auto; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <p class="eyebrow">MY TASKS</p>
+    <h1>タスクリスト</h1>
+    <p class="intro">タスクを登録して、すっきり管理しましょう。</p>
+
+    <section class="panel" aria-label="タスク管理">
+      <form id="todo-form">
+        <label class="field">
+          タスク
+          <input id="todo-input" name="todo" type="text" maxlength="200" placeholder="タスクを入力..." autocomplete="off" required>
+        </label>
+        <label class="field deadline-field" for="todo-deadline">
+          期限（任意）
+          <input id="todo-deadline" name="deadline" type="datetime-local">
+        </label>
+        <button class="primary" type="submit">追加する</button>
+      </form>
+
+      <div class="list-heading">
+        <h2>タスク</h2>
+        <span class="count" id="todo-count" aria-live="polite"></span>
+      </div>
+      <div class="list-controls">
+        <label>
+          表示
+          <select id="task-filter">
+            <option value="active">未完了</option>
+            <option value="all">すべて</option>
+            <option value="completed">完了済み</option>
+            <option value="overdue">期限切れ</option>
+            <option value="today">今日が期限</option>
+            <option value="scheduled">期限あり</option>
+            <option value="no-deadline">期限なし</option>
+          </select>
+        </label>
+        <label>
+          並び順
+          <select id="task-sort">
+            <option value="added">登録順</option>
+            <option value="deadline">期限が近い順</option>
+          </select>
+        </label>
+      </div>
+      <ul id="todo-list" aria-label="タスク一覧"></ul>
+      <div class="deadline-legend" aria-label="期限の色分け">
+        <span class="legend-item"><span class="legend-swatch has-deadline" aria-hidden="true"></span>今後の期限</span>
+        <span class="legend-item"><span class="legend-swatch due-today" aria-hidden="true"></span>今日が期限</span>
+        <span class="legend-item"><span class="legend-swatch overdue" aria-hidden="true"></span>期限切れ</span>
+      </div>
+      <p class="message" id="message" role="status" aria-live="polite"></p>
+      <div class="undo-notice" id="undo-notice" role="status" aria-live="polite" hidden>
+        <span id="undo-message"></span>
+        <button class="secondary" id="undo-button" type="button">取り消す</button>
+      </div>
+    </section>
+  </main>
+  <dialog id="duplicate-dialog" aria-labelledby="duplicate-message">
+    <p id="duplicate-message"></p>
+    <form method="dialog" class="dialog-actions">
+      <button class="primary" type="submit" value="yes">はい</button>
+      <button class="secondary" type="submit" value="no" autofocus>いいえ</button>
+    </form>
+  </dialog>
+  <style>
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+
+  <script>
+    (() => {
+      const storageKey = "simple-todo-items";
+      const form = document.querySelector("#todo-form");
+      const input = document.querySelector("#todo-input");
+      const deadlineInput = document.querySelector("#todo-deadline");
+      const list = document.querySelector("#todo-list");
+      const count = document.querySelector("#todo-count");
+      const message = document.querySelector("#message");
+      const filterSelect = document.querySelector("#task-filter");
+      const sortSelect = document.querySelector("#task-sort");
+      const duplicateDialog = document.querySelector("#duplicate-dialog");
+      const duplicateMessage = document.querySelector("#duplicate-message");
+      const undoNotice = document.querySelector("#undo-notice");
+      const undoMessage = document.querySelector("#undo-message");
+      const undoButton = document.querySelector("#undo-button");
+      let todos = [];
+      let storageReady = true;
+      let editingId = null;
+      let pendingAction = null;
+      let pendingFocus = input;
+      let undoItems = [];
+      let undoTimer = null;
+
+      function setMessage(text) {
+        message.textContent = text;
+      }
+
+      function saveTodos() {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(todos));
+          setMessage("");
+          return true;
+        } catch (error) {
+          console.error("タスクを保存できませんでした。", error);
+          setMessage("タスクを保存できませんでした。ブラウザーの保存領域を確認してください。");
+          return false;
+        }
+      }
+
+      function deadlineClass(todo, now) {
+        if (!todo.dueAt || todo.completed) return "";
+        const dueDate = new Date(todo.dueAt);
+        if (Number.isNaN(dueDate.getTime())) return "";
+        if (dueDate.getTime() < now.getTime()) return "overdue";
+        if (isSameDay(dueDate, now)) return "due-today";
+        return "has-deadline";
+      }
+
+      function isSameDay(first, second) {
+        return first.getFullYear() === second.getFullYear() &&
+          first.getMonth() === second.getMonth() &&
+          first.getDate() === second.getDate();
+      }
+
+      function matchesFilter(todo, filter, now) {
+        const dueDate = todo.dueAt ? new Date(todo.dueAt) : null;
+        const hasDeadline = dueDate && !Number.isNaN(dueDate.getTime());
+
+        switch (filter) {
+          case "all":
+            return true;
+          case "completed":
+            return Boolean(todo.completed);
+          case "overdue":
+            return !todo.completed && hasDeadline && dueDate.getTime() < now.getTime();
+          case "today":
+            return !todo.completed && hasDeadline && isSameDay(dueDate, now);
+          case "scheduled":
+            return !todo.completed && Boolean(hasDeadline);
+          case "no-deadline":
+            return !todo.completed && !hasDeadline;
+          default:
+            return !todo.completed;
+        }
+      }
+
+      function formatDeadline(value) {
+        return new Intl.DateTimeFormat("ja-JP", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(new Date(value));
+      }
+
+      function updateDeadlineHighlights() {
+        const now = new Date();
+        list.querySelectorAll(".todo[data-id]").forEach((item) => {
+          const todo = todos.find((entry) => entry.id === item.dataset.id);
+          if (!todo) return;
+          item.classList.remove("has-deadline", "due-today", "overdue");
+          const status = deadlineClass(todo, now);
+          if (status) item.classList.add(status);
+        });
+      }
+
+      function render() {
+        list.replaceChildren();
+        const now = new Date();
+        const visibleTodos = todos
+          .map((todo, index) => ({ todo, index }))
+          .filter(({ todo }) => matchesFilter(todo, filterSelect.value, now));
+
+        if (sortSelect.value === "deadline") {
+          visibleTodos.sort((first, second) => {
+            const completedOrder = Number(Boolean(first.todo.completed)) -
+              Number(Boolean(second.todo.completed));
+            if (completedOrder) return completedOrder;
+
+            const firstDue = first.todo.dueAt ? new Date(first.todo.dueAt).getTime() : Infinity;
+            const secondDue = second.todo.dueAt ? new Date(second.todo.dueAt).getTime() : Infinity;
+            return firstDue - secondDue || first.index - second.index;
+          });
+        }
+
+        count.textContent = visibleTodos.length === todos.length
+          ? `${todos.length}件`
+          : `${visibleTodos.length}件 / 全${todos.length}件`;
+
+        if (visibleTodos.length === 0) {
+          const empty = document.createElement("li");
+          empty.className = "empty";
+          empty.textContent = todos.length === 0
+            ? "タスクはまだありません。"
+            : "条件に一致するタスクはありません。";
+          list.append(empty);
+        }
+
+        visibleTodos.forEach(({ todo }) => {
+          const item = document.createElement("li");
+          item.className = "todo";
+          item.dataset.id = todo.id;
+          if (todo.completed) item.classList.add("completed");
+          const status = deadlineClass(todo, new Date());
+          if (status) item.classList.add(status);
+
+          if (todo.id === editingId) {
+            const editForm = document.createElement("form");
+            editForm.className = "edit-form";
+            const editInput = document.createElement("input");
+            editInput.type = "text";
+            editInput.maxLength = 200;
+            editInput.value = todo.text;
+            editInput.setAttribute("aria-label", `「${todo.text}」の内容`);
+            editInput.required = true;
+
+            const editDeadline = document.createElement("input");
+            editDeadline.type = "datetime-local";
+            editDeadline.value = todo.dueAt || "";
+            editDeadline.setAttribute("aria-label", `「${todo.text}」の期限（任意）`);
+
+            const saveButton = document.createElement("button");
+            saveButton.className = "primary";
+            saveButton.type = "submit";
+            saveButton.textContent = "保存";
+
+            const cancelButton = document.createElement("button");
+            cancelButton.className = "secondary";
+            cancelButton.type = "button";
+            cancelButton.textContent = "キャンセル";
+            cancelButton.addEventListener("click", () => {
+              editingId = null;
+              render();
+            });
+
+            editForm.addEventListener("submit", (event) => {
+              event.preventDefault();
+              const text = editInput.value.trim();
+              if (!text) {
+                setMessage("タスクは空欄にできません。");
+                editInput.focus();
+                return;
+              }
+
+              if (text !== todo.text && todos.some((entry) =>
+                entry.id !== todo.id && entry.text === text
+              )) {
+                duplicateMessage.textContent =
+                  "同じ内容のタスクがすでに登録されています。変更を保存しますか？";
+                pendingAction = {
+                  type: "edit",
+                  id: todo.id,
+                  text,
+                  dueAt: editDeadline.value
+                };
+                pendingFocus = editInput;
+                duplicateDialog.showModal();
+                return;
+              }
+
+              updateTodo(todo.id, text, editDeadline.value);
+            });
+
+            editForm.append(editInput, editDeadline, saveButton, cancelButton);
+            item.append(editForm);
+            list.append(item);
+            editInput.focus();
+            saveButton.disabled = !storageReady;
+            cancelButton.disabled = !storageReady;
+            editInput.disabled = !storageReady;
+            return;
+          }
+
+          const completionControl = document.createElement("label");
+          completionControl.className = "completion-control";
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = Boolean(todo.completed);
+          checkbox.setAttribute(
+            "aria-label",
+            todo.completed ? `「${todo.text}」を未完了に戻す` : `「${todo.text}」を完了にする`
+          );
+          checkbox.addEventListener("change", () => {
+            const previousValue = todo.completed;
+            todo.completed = checkbox.checked;
+            if (saveTodos()) {
+              render();
+            } else if (previousValue === undefined) {
+              delete todo.completed;
+              checkbox.checked = false;
+            } else {
+              todo.completed = previousValue;
+              checkbox.checked = previousValue;
+            }
+          });
+          completionControl.append(checkbox, document.createTextNode("完了"));
+
+          const text = document.createElement("span");
+          text.className = "todo-text";
+          text.textContent = todo.text;
+          if (todo.dueAt && !Number.isNaN(new Date(todo.dueAt).getTime())) {
+            const deadline = document.createElement("span");
+            deadline.className = "deadline-text";
+            deadline.textContent = `期限: ${formatDeadline(todo.dueAt)}`;
+            text.append(deadline);
+          }
+
+          const actions = document.createElement("div");
+          actions.className = "actions";
+
+          const editButton = document.createElement("button");
+          editButton.className = "secondary";
+          editButton.type = "button";
+          editButton.textContent = "編集";
+          editButton.setAttribute("aria-label", `「${todo.text}」を編集`);
+          editButton.addEventListener("click", () => {
+            editingId = todo.id;
+            render();
+          });
+
+          const deleteButton = document.createElement("button");
+          deleteButton.className = "danger";
+          deleteButton.type = "button";
+          deleteButton.textContent = "削除";
+          deleteButton.setAttribute("aria-label", `「${todo.text}」を削除`);
+          deleteButton.addEventListener("click", () => deleteTodo(todo.id));
+
+          actions.append(editButton, deleteButton);
+          item.append(completionControl, text, actions);
+          list.append(item);
+        });
+
+        form.querySelector("button").disabled = !storageReady;
+        input.disabled = !storageReady;
+        deadlineInput.disabled = !storageReady;
+        filterSelect.disabled = !storageReady;
+        sortSelect.disabled = !storageReady;
+        list.querySelectorAll("button").forEach((button) => {
+          button.disabled = !storageReady;
+        });
+        list.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+          checkbox.disabled = !storageReady;
+        });
+      }
+
+      function updateTodo(id, text, dueAt) {
+        const todo = todos.find((item) => item.id === id);
+        if (!todo) return;
+
+        const previousText = todo.text;
+        const previousDueAt = todo.dueAt;
+        todo.text = text;
+        if (dueAt) {
+          todo.dueAt = dueAt;
+        } else {
+          delete todo.dueAt;
+        }
+
+        if (saveTodos()) {
+          editingId = null;
+          render();
+          input.focus();
+        } else {
+          todo.text = previousText;
+          if (previousDueAt === undefined) {
+            delete todo.dueAt;
+          } else {
+            todo.dueAt = previousDueAt;
+          }
+        }
+      }
+
+      function deleteTodo(id) {
+        const index = todos.findIndex((item) => item.id === id);
+        if (index < 0) return;
+
+        const previousTodos = todos.slice();
+        const todo = todos[index];
+        const undoItem = {
+          todo,
+          index,
+          beforeId: previousTodos[index + 1]?.id || null,
+          afterId: previousTodos[index - 1]?.id || null
+        };
+        todos = todos.filter((item) => item.id !== id);
+        if (saveTodos()) {
+          undoItems.push(undoItem);
+          showUndoNotice();
+          render();
+        } else {
+          todos = previousTodos;
+        }
+      }
+
+      function addTodo(text, dueAt = deadlineInput.value) {
+        const todo = { id: crypto.randomUUID(), text };
+        if (dueAt) todo.dueAt = dueAt;
+        todos.unshift(todo);
+        if (saveTodos()) {
+          render();
+          form.reset();
+          input.focus();
+        } else {
+          todos.shift();
+        }
+      }
+
+      function showUndoNotice() {
+        window.clearTimeout(undoTimer);
+        undoMessage.textContent = undoItems.length === 1
+          ? "タスクを削除しました。"
+          : `${undoItems.length}件のタスクを削除しました。`;
+        undoNotice.hidden = false;
+        undoTimer = window.setTimeout(() => {
+          undoItems = [];
+          undoNotice.hidden = true;
+        }, 5000);
+      }
+
+      function undoDelete() {
+        if (undoItems.length === 0) return;
+        const previousTodos = todos.slice();
+
+        for (const entry of undoItems.slice().reverse()) {
+          let index = entry.beforeId
+            ? todos.findIndex((item) => item.id === entry.beforeId)
+            : -1;
+          if (index < 0 && entry.afterId) {
+            const afterIndex = todos.findIndex((item) => item.id === entry.afterId);
+            if (afterIndex >= 0) index = afterIndex + 1;
+          }
+          if (index < 0) index = Math.min(entry.index, todos.length);
+          todos.splice(index, 0, entry.todo);
+        }
+
+        if (saveTodos()) {
+          undoItems = [];
+          window.clearTimeout(undoTimer);
+          undoNotice.hidden = true;
+          render();
+        } else {
+          todos = previousTodos;
+        }
+      }
+
+      duplicateDialog.addEventListener("close", () => {
+        const action = pendingAction;
+        const accepted = duplicateDialog.returnValue === "yes";
+        pendingAction = null;
+
+        if (accepted && action && action.type === "add") {
+          addTodo(action.text, action.dueAt);
+        } else if (accepted && action && action.type === "edit") {
+          updateTodo(action.id, action.text, action.dueAt);
+        } else {
+          pendingFocus?.focus();
+        }
+        pendingFocus = input;
+      });
+
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (saved !== null) {
+          const parsed = JSON.parse(saved);
+          if (!Array.isArray(parsed) || !parsed.every((item) =>
+            item && typeof item.id === "string" && typeof item.text === "string" &&
+            (item.completed === undefined || typeof item.completed === "boolean") &&
+            (item.dueAt === undefined || (typeof item.dueAt === "string" &&
+              !Number.isNaN(new Date(item.dueAt).getTime())))
+          )) {
+            throw new Error("保存データの形式が正しくありません。");
+          }
+          todos = parsed;
+        }
+      } catch (error) {
+        console.error("保存済みタスクを読み込めませんでした。", error);
+        storageReady = false;
+        setMessage("保存済みタスクを読み込めませんでした。データを保護するため、操作を停止しました。");
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text) {
+          setMessage("タスクを入力してください。");
+          input.focus();
+          return;
+        }
+
+        if (todos.some((todo) => todo.text === text)) {
+          duplicateMessage.textContent =
+            "同じ内容のタスクがすでに登録されています。登録しますか？";
+          pendingAction = { type: "add", text, dueAt: deadlineInput.value };
+          pendingFocus = input;
+          duplicateDialog.showModal();
+          return;
+        }
+
+        addTodo(text);
+      });
+
+      filterSelect.addEventListener("change", render);
+      sortSelect.addEventListener("change", render);
+      undoButton.addEventListener("click", undoDelete);
+
+      render();
+      window.setInterval(updateDeadlineHighlights, 60_000);
+    })();
+  </script>
+</body>
+</html>
